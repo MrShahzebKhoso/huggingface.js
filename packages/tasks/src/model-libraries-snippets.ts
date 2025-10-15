@@ -1699,6 +1699,29 @@ image = sana(
 ) `,
 ];
 
+export const vibevoice = (model: ModelData): string[] => [
+	`import torch, soundfile as sf, librosa, numpy as np
+from vibevoice.processor.vibevoice_processor import VibeVoiceProcessor
+from vibevoice.modular.modeling_vibevoice_inference import VibeVoiceForConditionalGenerationInference
+
+# Load voice sample (should be 24kHz mono)
+voice, sr = sf.read("path/to/voice_sample.wav")
+if voice.ndim > 1: voice = voice.mean(axis=1)
+if sr != 24000: voice = librosa.resample(voice, sr, 24000)
+
+processor = VibeVoiceProcessor.from_pretrained("${model.id}")
+model = VibeVoiceForConditionalGenerationInference.from_pretrained(
+    "${model.id}", torch_dtype=torch.bfloat16
+).to("cuda").eval()
+model.set_ddpm_inference_steps(5)
+
+inputs = processor(text=["Speaker 0: Hello!\\nSpeaker 1: Hi there!"],
+                   voice_samples=[[voice]], return_tensors="pt")
+audio = model.generate(**inputs, cfg_scale=1.3,
+                       tokenizer=processor.tokenizer).speech_outputs[0]
+sf.write("output.wav", audio.cpu().numpy().squeeze(), 24000)`,
+];
+
 export const videoprism = (model: ModelData): string[] => [
 	`# Install from https://github.com/google-deepmind/videoprism
 import jax
@@ -1732,6 +1755,29 @@ export const voicecraft = (model: ModelData): string[] => [
 	`from voicecraft import VoiceCraft
 
 model = VoiceCraft.from_pretrained("${model.id}")`,
+];
+
+export const voxcpm = (model: ModelData): string[] => [
+	`import soundfile as sf
+from voxcpm import VoxCPM
+
+model = VoxCPM.from_pretrained("${model.id}")
+
+wav = model.generate(
+    text="VoxCPM is an innovative end-to-end TTS model from ModelBest, designed to generate highly expressive speech.",
+    prompt_wav_path=None,      # optional: path to a prompt speech for voice cloning
+    prompt_text=None,          # optional: reference text
+    cfg_value=2.0,             # LM guidance on LocDiT, higher for better adherence to the prompt, but maybe worse
+    inference_timesteps=10,   # LocDiT inference timesteps, higher for better result, lower for fast speed
+    normalize=True,           # enable external TN tool
+    denoise=True,             # enable external Denoise tool
+    retry_badcase=True,        # enable retrying mode for some bad cases (unstoppable)
+    retry_badcase_max_times=3,  # maximum retrying times
+    retry_badcase_ratio_threshold=6.0, # maximum length restriction for bad case detection (simple but effective), it could be adjusted for slow pace speech
+)
+
+sf.write("output.wav", wav, 16000)
+print("saved: output.wav")`,
 ];
 
 export const vui = (): string[] => [
